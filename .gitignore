@@ -1,0 +1,41 @@
+# Build output
+target/
+*.class
+*.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.suo
+*.user
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# Docker local volumes
+infra/local/data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Maven wrapper cache
+.mvn/wrapper/maven-wrapper.jar
+
+# Testcontainers
+.testcontainers.properties
