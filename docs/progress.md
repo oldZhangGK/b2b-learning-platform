@@ -102,6 +102,40 @@ Sprint 1.1 will:
 
 ---
 
+## Sprint 1.1 — Root POM, Maven Wrapper, Eureka Discovery Server
+**Date:** 2026-11-10
+**Goal:** Create the multi-module root POM, generate the Maven wrapper, and start the Eureka discovery server.
+
+### Completed
+- `pom.xml` (root, multi-module parent): Spring Boot 3.3.4, Spring Cloud BOM 2023.0.3, Java 21
+- `services/discovery-server/pom.xml`: eureka-server + actuator dependencies
+- `services/discovery-server/src/main/java/com/b2b/learning/discovery/DiscoveryServerApplication.java`
+- `services/discovery-server/src/main/resources/application.yml`: port 8761, standalone (no self-registration)
+- Maven wrapper generated (`mvn wrapper:wrapper -Dmaven=3.9.16`)
+
+### Commands Run
+```shell
+export JAVA_HOME=$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home
+./mvnw package -pl services/discovery-server    # BUILD SUCCESS
+./mvnw spring-boot:run -pl services/discovery-server
+curl http://localhost:8761/actuator/health      # {"status":"UP"}
+```
+
+Note: `JAVA_HOME` must be exported explicitly in a new terminal before running `./mvnw`. The `.zshrc` sets it on login; a new terminal session will have it automatically.
+
+### Acceptance Check
+- [x] `./mvnw package -pl services/discovery-server` → BUILD SUCCESS
+- [x] `curl http://localhost:8761/actuator/health` → `{"status":"UP"}`
+- [x] Eureka dashboard accessible at http://localhost:8761
+
+### Unresolved Issues
+- None
+
+### Next Step
+**Sprint 1.2** — Docker Compose for MySQL (core profile): two schemas (`identity_db`, `learning_db`), two DB users, initialization scripts, and a health check confirming both schemas are reachable.
+
+---
+
 ## Entry Template
 
 ```markdown
