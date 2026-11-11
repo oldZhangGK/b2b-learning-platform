@@ -53,6 +53,55 @@ Questions Sprint 0.2 will address:
 
 ---
 
+## Sprint 0.2 — Permission Matrix, State Machine, Version Decisions
+**Date:** 2026-11-10
+**Goal:** Confirm Java 21, write service-boundary ADR, permission matrix, and video-asset state machine; pin Spring Boot/Cloud versions.
+
+### Completed
+- Java 21.0.13 confirmed (`java -version`, `mvn -version` both show 21) — Sprint 0.1 blocker resolved
+- `docs/adr/ADR-001-service-boundaries.md` — why two services; media-worker and Lambda are not Spring services
+- `docs/adr/ADR-002-authorization-authority.md` — MySQL as auth authority; full permission matrix across all resources and roles
+- `docs/adr/ADR-003-video-asset-state-machine.md` — state diagram, valid transitions, idempotency rules, DLQ reconciliation
+
+### Commands Run
+```shell
+java -version
+# openjdk version "21.0.13.0.3" 2026-10-24
+
+mvn -version
+# Java version: 21.0.13.0.3
+```
+
+### Version Decisions (to be pinned in pom.xml at Sprint 1)
+Verify against https://spring.io/projects/spring-cloud at Sprint 1 before writing any pom.xml.
+Planned pins (subject to compatibility check):
+- Spring Boot: 3.3.x (latest patch — check Maven Central at Sprint 1)
+- Spring Cloud BOM: 2023.0.x (Leyton — compatible with Spring Boot 3.3.x)
+- Eureka: via `spring-cloud-starter-netflix-eureka-server` / `spring-cloud-starter-netflix-eureka-client`
+- Java source/target: 21
+- Maven Wrapper: pin version at Sprint 1 (`mvn wrapper:wrapper -Dmaven=3.9.16`)
+
+### Acceptance Check
+- [x] `java -version` → 21.0.13
+- [x] `mvn -version` → Java version 21
+- [x] ADR-001 written (service boundaries)
+- [x] ADR-002 written (permission matrix — all roles × all resources)
+- [x] ADR-003 written (state machine — all states, transitions, idempotency)
+
+### Unresolved Issues
+- Spring Boot/Cloud exact patch versions not yet verified — deferred to Sprint 1 pom.xml creation
+
+### Next Step
+**Sprint 1.1** — Create the Maven multi-module root POM and the discovery-server (Eureka) module.
+
+Sprint 1.1 will:
+1. Verify Spring Boot 3.3.x + Spring Cloud 2023.0.x compatibility at the official matrix page
+2. Create `pom.xml` (parent, multi-module: discovery-server, identity-service, learning-service)
+3. Create `services/discovery-server/` with Spring Cloud Netflix Eureka Server
+4. Run `./mvnw spring-boot:run` in discovery-server and confirm it starts and shows the Eureka dashboard at `http://localhost:8761`
+
+---
+
 ## Entry Template
 
 ```markdown
