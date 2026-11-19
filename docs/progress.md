@@ -136,6 +136,46 @@ Note: `JAVA_HOME` must be exported explicitly in a new terminal before running `
 
 ---
 
+## Sprint 1.2 — Docker Compose for MySQL (core profile)
+**Date:** 2026-11-18
+**Goal:** Bring up MySQL 8.4 with two schemas (`identity_db`, `learning_db`), two service users, and an initialization script; confirm both schemas are reachable.
+
+### Completed
+- `docker-compose.yml` — MySQL 8.4 service under `core` profile, `b2b-mysql` container, `b2b-mysql-data` named volume, port 3306, healthcheck via `mysqladmin ping`
+- `infra/mysql/init/01-init.sh` — creates `identity_db` and `learning_db` (utf8mb4), creates `identity_user` and `learning_user` with passwords injected from env vars, grants all privileges on respective schemas
+- `.env.example` — `MYSQL_ROOT_PASSWORD`, `IDENTITY_DB_PASSWORD`, `LEARNING_DB_PASSWORD` with placeholder values
+- `.env` — copied from `.env.example` (gitignored)
+
+### Commands Run
+```shell
+cp .env.example .env
+docker compose --profile core up -d
+# Container b2b-mysql Started
+
+docker compose ps
+# b2b-mysql   mysql:8.4   ...   Up 12 seconds (healthy)   0.0.0.0:3306->3306/tcp
+
+docker exec b2b-mysql mysql -u identity_user -pchangeme_identity identity_db -e "SELECT 1"
+# 1
+
+docker exec b2b-mysql mysql -u learning_user -pchangeme_learning learning_db -e "SELECT 1"
+# 1
+```
+
+### Acceptance Check
+- [x] `docker compose --profile core up -d` → container started
+- [x] `docker compose ps` → `b2b-mysql` status `healthy`
+- [x] `identity_user` connects to `identity_db` → `SELECT 1` returns `1`
+- [x] `learning_user` connects to `learning_db` → `SELECT 1` returns `1`
+
+### Unresolved Issues
+- None
+
+### Next Step
+**Sprint 1.3** — Create the `identity-service` Maven module: Spring Boot 3.3.4, Spring Data JPA, Flyway, MySQL connector, Eureka client, Spring Security, Bean Validation. First migration: `V1__create_users_roles_tables.sql`. Goal: service starts, registers with Eureka at `http://localhost:8761`, and Flyway applies the migration cleanly against `identity_db`.
+
+---
+
 ## Entry Template
 
 ```markdown
