@@ -176,6 +176,57 @@ docker exec b2b-mysql mysql -u learning_user -pchangeme_learning learning_db -e 
 
 ---
 
+## Sprint 1.3 — identity-service module: JPA, Flyway, Eureka, Security scaffold
+**Date:** 2026-11-23
+**Goal:** Create the `identity-service` Maven module; apply V1 Flyway migration against `identity_db`; register with Eureka.
+
+### Completed
+- `services/identity-service/pom.xml` — spring-boot-starter-web, data-jpa, security, validation, actuator, eureka-client, flyway-core, flyway-mysql, mysql-connector-j
+- `IdentityServiceApplication.java` — standard Spring Boot entry point
+- `config/SecurityConfig.java` — stateless, CSRF disabled, all endpoints permitted (temporary; Sprint 2 replaces with JWT filter per ADR-002)
+- `application.yml` — port 8081, identity_db datasource, `ddl-auto: validate`, Flyway enabled, Eureka defaultZone localhost:8761
+- `db/migration/V1__create_accounts_roles_tables.sql` — creates `roles` (seeded ADMIN/INSTRUCTOR/STUDENT), `accounts`, `account_roles` FK join table
+- Root `pom.xml` updated to include `services/identity-service` module
+
+### Commands Run
+```shell
+export JAVA_HOME=$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home
+./mvnw package -pl services/identity-service -am -q
+# BUILD SUCCESS
+
+./mvnw spring-boot:run -pl services/discovery-server   # background
+./mvnw spring-boot:run -pl services/identity-service   # background, IDENTITY_DB_PASSWORD=changeme_identity
+
+curl http://localhost:8081/actuator/health
+# {"status":"UP"}
+
+# Flyway log:
+# Successfully applied 1 migration to schema `identity_db`, now at version v1
+
+curl http://localhost:8761/eureka/apps/IDENTITY-SERVICE
+# <status>UP</status>
+
+docker exec b2b-mysql mysql -u identity_user -pchangeme_identity identity_db \
+  -e "SHOW TABLES; SELECT name FROM roles;"
+# Tables: account_roles, accounts, flyway_schema_history, roles
+# Roles:  ADMIN, INSTRUCTOR, STUDENT
+```
+
+### Acceptance Check
+- [x] `./mvnw package -pl services/identity-service -am` → BUILD SUCCESS
+- [x] `curl http://localhost:8081/actuator/health` → `{"status":"UP"}`
+- [x] Flyway log → "Successfully applied 1 migration to schema `identity_db`, now at version v1"
+- [x] `curl http://localhost:8761/eureka/apps/IDENTITY-SERVICE` → `<status>UP</status>`
+- [x] `SHOW TABLES` in identity_db → accounts, roles, account_roles, flyway_schema_history
+
+### Unresolved Issues
+- Flyway warns MySQL 8.4 is newer than the tested version (max tested: 8.1). No functional impact observed; note for future Flyway upgrade.
+
+### Next Step
+**Sprint 1.4** — `POST /api/auth/login` and `GET /api/auth/me` endpoints in identity-service: `Account` + `Role` JPA entities, `AccountRepository`, `AccountService`, `AuthController`, BCrypt password encoding, JWT generation and validation (RSA key pair, 1-hour access token), `JwtAuthenticationFilter`. Acceptance: `POST /api/auth/login` with a seeded ADMIN account returns a signed JWT; `GET /api/auth/me` with that token returns the account's username and roles.
+
+---
+
 ## Entry Template
 
 ```markdown

@@ -20,6 +20,7 @@
     <!-- Modules added as services are created -->
     <modules>
         <module>services/discovery-server</module>
+        <module>services/identity-service</module>
     </modules>
 
     <properties>
