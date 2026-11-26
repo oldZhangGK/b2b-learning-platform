@@ -223,7 +223,66 @@ docker exec b2b-mysql mysql -u identity_user -pchangeme_identity identity_db \
 - Flyway warns MySQL 8.4 is newer than the tested version (max tested: 8.1). No functional impact observed; note for future Flyway upgrade.
 
 ### Next Step
-**Sprint 1.4** — `POST /api/auth/login` and `GET /api/auth/me` endpoints in identity-service: `Account` + `Role` JPA entities, `AccountRepository`, `AccountService`, `AuthController`, BCrypt password encoding, JWT generation and validation (RSA key pair, 1-hour access token), `JwtAuthenticationFilter`. Acceptance: `POST /api/auth/login` with a seeded ADMIN account returns a signed JWT; `GET /api/auth/me` with that token returns the account's username and roles.
+**Sprint 1.4** — see below.
+
+---
+
+## Sprint 1.4 — Auth endpoints: BCrypt + RSA JWT, login + me
+**Date:** 2026-11-25
+**Goal:** Implement `POST /api/auth/login` and `GET /api/auth/me` in identity-service with BCrypt password verification and RS256 JWT (1-hour access token).
+
+### Completed
+- `pom.xml` — added `jjwt-api 0.12.6`, `jjwt-impl`, `jjwt-jackson` (runtime)
+- `domain/Role.java` — JPA entity mapping `roles` table
+- `domain/Account.java` — JPA entity mapping `accounts` table with `@ManyToMany` roles via `account_roles`; `@PrePersist`/`@PreUpdate` manage timestamps
+- `repository/AccountRepository.java` — `findByUsername`, `existsByUsername`
+- `repository/RoleRepository.java` — `findByName`
+- `dto/LoginRequest.java`, `LoginResponse.java`, `MeResponse.java` — Java records
+- `service/JwtService.java` — generates 2048-bit RSA key pair on startup; `generateToken` (RS256, 1 hour); `validateAndParse` via `Jwts.parser().verifyWith(publicKey)`
+- `service/AccountService.java` — implements `UserDetailsService`; loads account by username, maps roles to `SimpleGrantedAuthority` (no "ROLE_" prefix, roles stored as plain `ADMIN`/`INSTRUCTOR`/`STUDENT`)
+- `config/JwtAuthenticationFilter.java` — `OncePerRequestFilter`; extracts Bearer token, validates, sets `SecurityContextHolder`
+- `web/AuthController.java` — `POST /api/auth/login` authenticates via `AuthenticationManager`, issues JWT; `GET /api/auth/me` reads from Security context
+- `init/DataInitializer.java` — `ApplicationRunner`; seeds `admin / Admin@123` (BCrypt-encoded) with ADMIN role if not already present
+- `config/SecurityConfig.java` — replaced temporary open config: `BCryptPasswordEncoder` bean, `AuthenticationManager` bean, JWT filter wired before `UsernamePasswordAuthenticationFilter`, `/api/auth/login` + `/actuator/**` permitted, all else authenticated
+- `application.yml` — added `app.jwt.expiration-ms: 3600000`
+
+### Commands Run
+```shell
+export JAVA_HOME=$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home
+export IDENTITY_DB_PASSWORD=changeme_identity
+mvn -pl services/identity-service compile -q
+# BUILD SUCCESS
+
+mvn -pl services/identity-service spring-boot:run -q &
+
+curl http://localhost:8081/actuator/health
+# {"status":"UP"}
+
+curl -s -X POST http://localhost:8081/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"Admin@123"}'
+# {"token":"eyJhbGciOiJSUzI1NiJ9...","username":"admin","roles":["ADMIN"]}
+
+curl -s http://localhost:8081/api/auth/me \
+  -H "Authorization: Bearer <token>"
+# {"username":"admin","roles":["ADMIN"]}
+
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8081/api/auth/me
+# 403  (unauthenticated — endpoint is protected)
+```
+
+### Acceptance Check
+- [x] `mvn -pl services/identity-service compile -q` → BUILD SUCCESS
+- [x] `POST /api/auth/login` with `admin / Admin@123` → 200 + signed RS256 JWT containing `username` and `roles`
+- [x] `GET /api/auth/me` with valid JWT → `{"username":"admin","roles":["ADMIN"]}`
+- [x] `GET /api/auth/me` without token → 403 (endpoint protected)
+
+### Unresolved Issues
+- Spring Security returns 403 (not 401) for unauthenticated requests without an explicit `AuthenticationEntryPoint`. Acceptable for Sprint 1.4; configure proper 401 in a later sprint.
+- RSA key pair is generated fresh on each startup (tokens are invalidated on restart). Acceptable for dev; Sprint 2 will load from a persistent keystore.
+
+### Next Step
+**Sprint 1.5** — Gateway service or learning-service module (TBD).
 
 ---
 
